@@ -165,14 +165,9 @@ async def main():
 
 if __name__ == '__main__':
     import asyncio
+    import nest_asyncio
 
-    try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        if str(e).startswith('This event loop is already running'):
-            # For environments like Railway
-            loop = asyncio.get_event_loop()
-            loop.create_task(main())
-            loop.run_forever()
-        else:
-            raise
+    nest_asyncio.apply()
+
+    asyncio.get_event_loop().run_until_complete(main())
+
