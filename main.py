@@ -1,16 +1,12 @@
-import os
 import json
 import datetime
 import asyncio
-import nest_asyncio
+import os
 from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
 # === CONFIG ===
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set! Please set it in your environment variables.")
-
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Corrected env var name ✅
 DATA_FILE = 'data.json'
 
 # === DATA HANDLING ===
@@ -133,13 +129,14 @@ async def send_reminder(bot, group_id, habit):
     )
 
 async def schedule_reminders(app):
+    print("⏰ Scheduler is running...")
     while True:
         now = datetime.datetime.now().strftime("%H:%M")
         for group_id, group_data in data["groups"].items():
             for habit, reminder_time in group_data["habits"].items():
                 if now == reminder_time:
                     await send_reminder(app.bot, group_id, habit)
-        await asyncio.sleep(60)  # Check every minute
+        await asyncio.sleep(60)
 
 # === NEW GROUP WELCOME ===
 
@@ -154,6 +151,10 @@ async def new_group_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === MAIN ===
 
 async def main():
+    if not BOT_TOKEN:
+        print("❌ TELEGRAM_BOT_TOKEN environment variable not set!")
+        return
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -162,12 +163,17 @@ async def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_group_handler))
 
-    # Start reminder scheduler
-    app.create_task(schedule_reminders(app))
+    # Use startup hook for scheduling reminders
+    async def on_startup(app):
+        app.create_task(schedule_reminders(app))
+        print("🚀 Reminder scheduler started!")
+
+    app.post_init = on_startup
 
     print("🤖 Bot is running...")
     await app.run_polling()
 
 if __name__ == '__main__':
+    import nest_asyncio
     nest_asyncio.apply()
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
