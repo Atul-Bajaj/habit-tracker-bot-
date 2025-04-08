@@ -198,18 +198,25 @@ async def schedule_reminders(app):
         now = datetime.datetime.now().strftime("%H:%M")
         current_hour = datetime.datetime.now().strftime("%H:%M")
 
-        for group_id in data["groups"]:
-            # Reminders
-            group_data = data["groups"][group_id]
+        # Fetch all groups from Firestore
+        groups_ref = db.collection('groups')
+        groups = groups_ref.stream()
+
+        for group in groups:
+            group_id = group.id
+            group_data = group.to_dict()
+
+            # Reminders for each habit in the group
             for habit, reminder_time in group_data["habits"].items():
                 if now == reminder_time:
                     await send_reminder(app.bot, group_id, habit)
 
-            # Daily Summary at 20:00
+            # Send daily summary at 20:00
             if current_hour == "20:00":
                 await send_daily_summary(app.bot, group_id)
 
         await asyncio.sleep(60)  # Check every minute
+
 
 # === NEW GROUP WELCOME ===
 
