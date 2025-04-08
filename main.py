@@ -6,6 +6,7 @@ from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 import firebase_admin
 from firebase_admin import credentials, firestore
+import pytz
 
 # === CONFIG ===
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -20,8 +21,17 @@ db = firestore.client()
 
 # === DATA HANDLING ===
 
+india_timezone = pytz.timezone('Asia/Kolkata')  # Set IST timezone
+
+# Function to get the current date in IST
 def get_today():
-    return datetime.date.today().isoformat()
+    today = datetime.datetime.now(india_timezone)
+    return today.date().isoformat()  # Returns the current date in 'YYYY-MM-DD' format
+
+# Function to get the current time in HH:MM format (for comparing reminder times)
+def get_current_time():
+    now = datetime.datetime.now(india_timezone)
+    return now.strftime("%H:%M")  # Returns current time in 'HH:MM' format
 
 # === HELPERS ===
 
@@ -195,9 +205,9 @@ async def send_daily_summary(bot, group_id):
 async def schedule_reminders(app):
     print("🚀 Reminder scheduler started!")
     while True:
-        now = datetime.datetime.now().strftime("%H:%M")
-        current_hour = datetime.datetime.now().strftime("%H:%M")
-
+        now = get_current_time()  # Get current time in IST
+        print(f"Checking time: {now}")
+        
         # Fetch all groups from Firestore
         groups_ref = db.collection('groups')
         groups = groups_ref.stream()
@@ -212,7 +222,7 @@ async def schedule_reminders(app):
                     await send_reminder(app.bot, group_id, habit)
 
             # Send daily summary at 20:00
-            if current_hour == "20:00":
+            if now == "20:00":
                 await send_daily_summary(app.bot, group_id)
 
         await asyncio.sleep(60)  # Check every minute
