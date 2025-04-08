@@ -262,7 +262,7 @@ async def main():
                 print(f"Scheduler crashed with error: {e}. Restarting...")
                 await asyncio.sleep(1)
 
-    app.create_task(safe_scheduler())
+    asyncio.create_task(safe_scheduler())
 
     print("🤖 Bot is running...")
     await app.run_polling()
