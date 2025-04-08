@@ -1,3 +1,2 @@
-python-telegram-bot==20.x.x
+python-telegram-bot==20.7
 nest_asyncio
-other-libraries-you-use
