@@ -1,3 +1,4 @@
 python-telegram-bot==20.7
 firebase-admin==5.0.0
 nest-asyncio==1.5.4
+pytz==2023.3
