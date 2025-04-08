@@ -6,7 +6,7 @@ from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
 # === CONFIG ===
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Corrected env var name ✅
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 DATA_FILE = 'data.json'
 
 # === DATA HANDLING ===
@@ -129,14 +129,20 @@ async def send_reminder(bot, group_id, habit):
     )
 
 async def schedule_reminders(app):
-    print("⏰ Scheduler is running...")
+    print("🚀 Reminder scheduler started!")
     while True:
-        now = datetime.datetime.now().strftime("%H:%M")
-        for group_id, group_data in data["groups"].items():
-            for habit, reminder_time in group_data["habits"].items():
-                if now == reminder_time:
-                    await send_reminder(app.bot, group_id, habit)
-        await asyncio.sleep(60)
+        try:
+            print("⏰ Scheduler tick...")
+            now = datetime.datetime.now().strftime("%H:%M")
+            for group_id, group_data in data["groups"].items():
+                for habit, reminder_time in group_data["habits"].items():
+                    if now == reminder_time:
+                        print(f"🔔 Sending reminder for habit: {habit} in group {group_id}")
+                        await send_reminder(app.bot, group_id, habit)
+            await asyncio.sleep(60)
+        except Exception as e:
+            print(f"⚠️ Error in scheduler: {e}")
+            print("🔄 Restarting scheduler loop...")
 
 # === NEW GROUP WELCOME ===
 
@@ -151,10 +157,6 @@ async def new_group_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === MAIN ===
 
 async def main():
-    if not BOT_TOKEN:
-        print("❌ TELEGRAM_BOT_TOKEN environment variable not set!")
-        return
-
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -163,17 +165,24 @@ async def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_group_handler))
 
-    # Use startup hook for scheduling reminders
-    async def on_startup(app):
-        app.create_task(schedule_reminders(app))
-        print("🚀 Reminder scheduler started!")
-
-    app.post_init = on_startup
-
     print("🤖 Bot is running...")
-    await app.run_polling()
+
+    # Start bot and scheduler concurrently, with auto-restart for scheduler
+    bot_task = asyncio.create_task(app.run_polling())
+
+    async def scheduler_wrapper():
+        while True:
+            try:
+                await schedule_reminders(app)
+            except Exception as e:
+                print(f"⚠️ Scheduler crashed with exception: {e}. Restarting...")
+
+    scheduler_task = asyncio.create_task(scheduler_wrapper())
+
+    await asyncio.gather(bot_task, scheduler_task)
 
 if __name__ == '__main__':
     import nest_asyncio
     nest_asyncio.apply()
+
     asyncio.run(main())
