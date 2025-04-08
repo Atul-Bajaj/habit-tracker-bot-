@@ -1,11 +1,16 @@
+import os
 import json
 import datetime
 import asyncio
+import nest_asyncio
 from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
 # === CONFIG ===
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("⚠️ TELEGRAM_BOT_TOKEN is not set! Please set it in your environment variables.")
+
 DATA_FILE = 'data.json'
 
 # === DATA HANDLING ===
@@ -164,10 +169,5 @@ async def main():
     await app.run_polling()
 
 if __name__ == '__main__':
-    import asyncio
-    import nest_asyncio
-
     nest_asyncio.apply()
-
     asyncio.get_event_loop().run_until_complete(main())
-
